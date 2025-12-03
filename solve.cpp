@@ -56,7 +56,7 @@ vector<vector<Tile*>> readPuzzle(const string& filePath);
 void writeAnswer(vector<vector<Tile*>> puzzle);
 
 // Inference functions
-bool forwardChecking(vector<vector<Tile*>> puzzle);
+bool forwardChecking(vector<vector<Tile*>>& puzzle);
 
 int main(int argc, char* argv[]) {
     if (argc != 2) {
@@ -99,19 +99,41 @@ bool isInGrid(int x, int y) {
 
 int degreeHeuristic(int x, int y, std::vector<std::vector<Tile*>>& puzzle) {
     if (!isInGrid(x, y)) return -1;
-    int adjZeros = 0;
-    for (int xOffset = -1; xOffset < 2; ++xOffset) {
-        for (int yOffset = -1; yOffset < 2; ++yOffset) {
-            if (xOffset == 0 && yOffset == 0) continue;
-            if (!isInGrid(x + xOffset, y + yOffset)) continue;
-
-            Tile* tile = puzzle[x + xOffset][y + yOffset];
-            if (tile->num == 0) {
-                ++adjZeros;
-            }
-        }
+    int unassignedNeighbours = 0;
+    // Above
+    int newX = x;
+    int newY = y - 1;
+    while (isInGrid(newX, newY)) {
+        if (!puzzle[newX][newY]->hasBomb) unassignedNeighbours++;
+        newY--;
     }
-    return adjZeros;
+    // Below
+    newX = x;
+    newY = y + 1;
+    while (isInGrid(newX, newY)) {
+        if (!puzzle[newX][newY]->hasBomb) unassignedNeighbours++;
+        newY++;
+    }
+    // Left
+    newX = x - 1;
+    newY = y;
+    while (isInGrid(newX, newY)) {
+        if (!puzzle[newX][newY]->hasBomb) unassignedNeighbours++;
+        newX--;
+    }
+    // Right
+    newX = x + 1;
+    newY = y;
+    while (isInGrid(newX, newY)) {
+        if (!puzzle[newX][newY]->hasBomb) unassignedNeighbours++;
+        newX++;
+    }
+    // Diagnols
+    if (isInGrid(x + 1, y + 1)) unassignedNeighbours += (int)(puzzle[x + 1][y + 1]->hasBomb);
+    if (isInGrid(x - 1, y - 1)) unassignedNeighbours += (int)(puzzle[x - 1][y - 1]->hasBomb);
+    if (isInGrid(x - 1, y + 1)) unassignedNeighbours += (int)(puzzle[x - 1][y + 1]->hasBomb);
+    if (isInGrid(x + 1, y - 1)) unassignedNeighbours += (int)(puzzle[x + 1][y - 1]->hasBomb);
+    return unassignedNeighbours;
 }
 
 int mrv(Tile& tile) {
