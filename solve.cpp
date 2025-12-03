@@ -42,6 +42,10 @@ bool isInGrid(int x, int y);
 // returns how many non-number tiles adjacent to the coordinate
 int degreeHeuristic(int x, int y, std::vector<std::vector<Tile>>& puzzle);
 
+// takes a pair of coordinates and
+// returns how many non-number tiles adjacent to the coordinate
+int mrv(Tile& tile);
+
 vector<vector<Tile*>> readPuzzle(const string& filePath);
 
 void writeAnswer(vector<vector<Tile*>> puzzle);
@@ -90,7 +94,7 @@ bool isInGrid(int x, int y) {
 
 int degreeHeuristic(int x, int y, std::vector<std::vector<Tile>>& puzzle) {
     if (!isInGrid(x, y)) return -1;
-    int res = 0;
+    int adjZeros = 0;
     for (int xOffset = -1; xOffset < 2; ++xOffset) {
         for (int yOffset = -1; yOffset < 2; ++yOffset) {
             if (xOffset == 0 && yOffset == 0) continue;
@@ -98,9 +102,20 @@ int degreeHeuristic(int x, int y, std::vector<std::vector<Tile>>& puzzle) {
 
             Tile* tile = &puzzle[x + xOffset][y + yOffset];
             if (tile->num == 0) {
-                ++res;
+                ++adjZeros;
             }
         }
     }
-    return res;
+    return adjZeros;
+}
+
+int mrv(Tile& tile) {
+    int possibilities = 0;
+    if (tile.domain.canBeBomb == true) {
+        ++possibilities;
+    }
+    if (tile.domain.cannotBeBomb == true) {
+        ++possibilities;
+    }
+    return possibilities;
 }
