@@ -36,6 +36,12 @@ struct TileComp {
     bool operator()(const Tile* lhs, const Tile* rhs) const;
 };
 
+bool isInGrid(int x, int y);
+
+// takes a pair of coordinates and
+// returns how many non-number tiles adjacent to the coordinate
+int degreeHeuristic(int x, int y, std::vector<std::vector<Tile>>& puzzle);
+
 vector<vector<Tile*>> readPuzzle(const string& filePath);
 
 void writeAnswer(vector<vector<Tile*>> puzzle);
@@ -76,4 +82,25 @@ vector<vector<Tile*>> readPuzzle(const string& filePath) {
         }
     }
     return result;
+}
+
+bool isInGrid(int x, int y) {
+    return !(x < 0 || x > 8 || y < 0 || y > 8);
+}
+
+int degreeHeuristic(int x, int y, std::vector<std::vector<Tile>>& puzzle) {
+    if (!isInGrid(x, y)) return -1;
+    int res = 0;
+    for (int xOffset = -1; xOffset < 2; ++xOffset) {
+        for (int yOffset = -1; yOffset < 2; ++yOffset) {
+            if (xOffset == 0 && yOffset == 0) continue;
+            if (!isInGrid(x + xOffset, y + yOffset)) continue;
+
+            Tile* tile = &puzzle[x + xOffset][y + yOffset];
+            if (tile->num == 0) {
+                ++res;
+            }
+        }
+    }
+    return res;
 }
