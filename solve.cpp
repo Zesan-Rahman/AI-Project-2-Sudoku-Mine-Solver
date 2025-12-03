@@ -41,13 +41,13 @@ vector<vector<Tile*>> readPuzzle(const string& filePath);
 void writeAnswer(vector<vector<Tile*>> puzzle);
 
 // Inference functions
-bool AC3Inference(vector<vector<Tile*>> puzzle);
+bool forwardChecking(vector<vector<Tile*>> puzzle);
 
 bool revise(vector<vector<Tile*>> puzzle, Tile* X, Tile* Y);
 
 int main(int argc, char* argv[]) {
     if (argc != 2) {
-        cout << "Run ./solve.o fileName (e.g. ./solve.o input.txt)";
+        cout << "Run ./solve.o fileName (e.g. ./solve.o input.txt)" << endl;
         return 1;
     }
     vector<vector<Tile*>> puzzle = readPuzzle(argv[1]);
