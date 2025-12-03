@@ -32,15 +32,20 @@ struct Tile {
 };
 
 // For the prio queue, which applies MRV and DH on the tiles.
-struct TileComp {
+class TileComp {
+public:
     bool operator()(const Tile* lhs, const Tile* rhs) const;
+
+private:
+    // needs this because of how degree heuristic works
+    std::vector<std::vector<Tile*>>* puzzle;
 };
 
 bool isInGrid(int x, int y);
 
 // takes a pair of coordinates and
 // returns how many non-number tiles adjacent to the coordinate
-int degreeHeuristic(int x, int y, std::vector<std::vector<Tile>>& puzzle);
+int degreeHeuristic(int x, int y, std::vector<std::vector<Tile*>>& puzzle);
 
 // takes a tile and returns number
 // of possibilities that tile has (bomb or not bomb)
@@ -92,7 +97,7 @@ bool isInGrid(int x, int y) {
     return !(x < 0 || x > 8 || y < 0 || y > 8);
 }
 
-int degreeHeuristic(int x, int y, std::vector<std::vector<Tile>>& puzzle) {
+int degreeHeuristic(int x, int y, std::vector<std::vector<Tile*>>& puzzle) {
     if (!isInGrid(x, y)) return -1;
     int adjZeros = 0;
     for (int xOffset = -1; xOffset < 2; ++xOffset) {
@@ -100,7 +105,7 @@ int degreeHeuristic(int x, int y, std::vector<std::vector<Tile>>& puzzle) {
             if (xOffset == 0 && yOffset == 0) continue;
             if (!isInGrid(x + xOffset, y + yOffset)) continue;
 
-            Tile* tile = &puzzle[x + xOffset][y + yOffset];
+            Tile* tile = puzzle[x + xOffset][y + yOffset];
             if (tile->num == 0) {
                 ++adjZeros;
             }
