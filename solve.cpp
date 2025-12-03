@@ -42,8 +42,8 @@ bool isInGrid(int x, int y);
 // returns how many non-number tiles adjacent to the coordinate
 int degreeHeuristic(int x, int y, std::vector<std::vector<Tile>>& puzzle);
 
-// takes a pair of coordinates and
-// returns how many non-number tiles adjacent to the coordinate
+// takes a tile and returns number
+// of possibilities that tile has (bomb or not bomb)
 int mrv(Tile& tile);
 
 vector<vector<Tile*>> readPuzzle(const string& filePath);
