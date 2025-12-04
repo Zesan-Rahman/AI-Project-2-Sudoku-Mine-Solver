@@ -30,6 +30,23 @@ struct Pair {
     int col = 0;
 };
 
+class NumberedTileHelper {
+public:
+    void addTile(int row, int col) {
+        if (puzzle[row][col] != 1) {
+            ++unassignedTiles;
+            puzzle[row][col] = 1;
+        }
+    }
+    int getUnassignedTiles() {
+        return unassignedTiles;
+    }
+
+private:
+    vector<vector<int>> puzzle = vector<vector<int>>(9, vector<int>(9, 0));
+    int unassignedTiles = 0;
+};
+
 // For the prio queue, which applies MRV and DH on the tiles.
 class TileComp {
 public:
@@ -83,6 +100,10 @@ bool isNumberedTileConsistent(int row, int col, vector<vector<Tile*>>& puzzle);
 vector<vector<Tile*>> readPuzzle(const string& filePath);
 
 void writeAnswer(vector<vector<Tile*>> puzzle);
+
+bool isInRow(int row, int col, int newRow, int newCol);
+bool isInCol(int row, int col, int newRow, int newCol);
+bool isInBox(int row, int col, int newRow, int newCol);
 
 // Inference functions
 bool forwardChecking(vector<vector<Tile*>>& puzzle);
@@ -158,6 +179,41 @@ int degreeHeuristic(int row, int col, vector<vector<Tile*>>& puzzle) {
             }
         }
     }
+
+    // unassigned variables related to adjacent number tiles
+    NumberedTileHelper helper;
+    for (int rowOffset = -1; rowOffset < 2; ++rowOffset) {
+        for (int colOffset = -1; colOffset < 2; ++colOffset) {
+            if (rowOffset == 0 && colOffset == 0) continue;
+            if (!isInGrid(row + rowOffset, col + colOffset)) {
+                continue;
+            }
+
+            // get adjacent tiles and see if they are numbered
+            Tile* tile = puzzle[row + rowOffset][col + colOffset];
+            if (tile->num == 0) continue;
+
+            // get the tiles adjacent to the NUMBERED tile and see if they are unassigned
+            for (int numRowOffset = -1; numRowOffset < 2; ++numRowOffset) {
+                for (int numColOffset = -1; numColOffset < 2; ++numColOffset) {
+                    // don't add dupes
+                    if (numRowOffset == 0 && numColOffset == 0) continue;
+                    int currRow = row + rowOffset + numRowOffset;
+                    int currCol = col + colOffset + numColOffset;
+                    if (!isInGrid(currRow, currCol)) continue;
+                    if (currRow == row && currCol == col) continue;
+                    if (isInRow(row, col, currRow, currCol)) continue;
+                    if (isInCol(row, col, currRow, currCol)) continue;
+                    if (isInBox(row, col, currRow, currCol)) continue;
+                    Tile* tile = puzzle[row + numRowOffset][col + numColOffset];
+                    if (tile->assignment == UNASSIGNED && tile->num == 0) {
+                        helper.addTile(currRow, currCol);
+                    }
+                }
+            }
+        }
+    }
+    unassignedVariables += helper.getUnassignedTiles();
 
     return unassignedVariables;
 }
@@ -388,4 +444,25 @@ bool isNumberedTileConsistent(int row, int col, vector<vector<Tile*>>& puzzle) {
         }
     }
     return adjBombs < 0 || adjEmptys < 0;
+}
+
+bool isInRow(int row, int col, int newRow, int newCol) {
+    return row == newRow;
+}
+
+bool isInCol(int row, int col, int newRow, int newCol) {
+    return col == newCol;
+}
+
+bool isInBox(int row, int col, int newRow, int newCol) {
+    int box = getBoxFromCoords(row, col);
+    Pair startCoords = getStartCoordsFromBox(box);
+    for (size_t startRow = startCoords.row; startRow < startCoords.row + 3; ++startRow) {
+        for (size_t startCol = startCoords.col; startCol < startCoords.col + 3; ++startCol) {
+            if (startRow == newRow && startCol == newCol) {
+                return true;
+            }
+        }
+    }
+    return false;
 }
