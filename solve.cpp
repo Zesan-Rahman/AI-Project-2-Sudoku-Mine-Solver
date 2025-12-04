@@ -57,6 +57,8 @@ int degreeHeuristic(int row, int col, vector<vector<Tile*>>& puzzle);
 // of possibilities that tile has (bomb or not bomb)
 int mrv(Tile& tile);
 
+bool isPuzzleConsistent(vector<vector<Tile*>>& puzzle);
+
 vector<vector<Tile*>> readPuzzle(const string& filePath);
 
 void writeAnswer(vector<vector<Tile*>> puzzle);
@@ -156,4 +158,57 @@ int getBoxFromCoords(int row, int col) {
 
 Pair getStartCoordsFromBox(int box) {
     return {.row = (box / 3) * 3, .col = (box % 3) * 3};
+}
+
+bool isPuzzleConsistent(vector<vector<Tile*>>& puzzle) {
+    for (size_t row = 0; row < puzzle.size(); ++row) {
+        for (size_t col = 0; col < puzzle[row].size(); ++row) {
+            Tile* currTile = puzzle[row][col];
+            if (currTile->assignment != UNASSIGNED) {  // implies num == 0
+                bool consistent = true;
+                // TODO: verify consistency of assignment by checking col, row, box
+                // consistent = // some statement, probably a function
+
+                if (!consistent) {
+                    return false;
+                }
+                continue;
+            }
+
+            if (currTile->assignment == UNASSIGNED && currTile->num == 0) {
+                // TODO: update domain of possibilities by checking col, row, box
+                // and then check if domain is empty
+                if (!currTile->domain.canBeBomb && !currTile->domain.canBeEmpty) {
+                    return false;
+                }
+                continue;
+            }
+
+            // if currTile->num != 0 then verify that adjacent tiles match up
+            int adjBombs = currTile->num;
+            int adjEmptys = 8 - adjBombs;
+            for (int rowOffset = -1; rowOffset < 2; ++rowOffset) {
+                for (int colOffset = -1; colOffset < 2; ++colOffset) {
+                    if (rowOffset == 0 && colOffset == 0) continue;
+                    if (!isInGrid(col + colOffset, row + rowOffset)) {
+                        --adjEmptys;
+                        continue;
+                    }
+
+                    Tile* tile = puzzle[row + rowOffset][col + colOffset];
+                    if (tile->num == 0 && tile->assignment == BOMB) {
+                        --adjBombs;
+                    } else if (tile->num == 0 && tile->assignment == EMPTY) {
+                        --adjEmptys;
+                    }
+                }
+            }
+
+            // more bombs than possible or more emptys than possible
+            if (adjBombs < 0 || adjEmptys < 0) {
+                return false;
+            }
+        }
+    }
+    return true;
 }
