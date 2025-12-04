@@ -45,7 +45,7 @@ public:
 
 private:
     // needs this because of how degree heuristic works
-    std::vector<std::vector<Tile*>>* puzzle;
+    vector<vector<Tile*>>* puzzle;
 };
 
 // checks if a pair of coords is in the 9x9 grid
@@ -59,7 +59,7 @@ Pair getStartCoordsFromBox(int box);
 
 // takes a pair of coordinates and
 // returns how many non-number tiles adjacent to the coordinate
-int degreeHeuristic(int row, int col, std::vector<std::vector<Tile*>>& puzzle);
+int degreeHeuristic(int row, int col, vector<vector<Tile*>>& puzzle);
 
 // takes a tile and returns number
 // of possibilities that tile has (bomb or not bomb)
@@ -111,7 +111,7 @@ bool isInGrid(int row, int col) {
     return !(row < 0 || row > 8 || col < 0 || col > 8);
 }
 
-int degreeHeuristic(int row, int col, std::vector<std::vector<Tile*>>& puzzle) {
+int degreeHeuristic(int row, int col, vector<vector<Tile*>>& puzzle) {
     if (!isInGrid(row, col)) return -1;
     int unassignedVariables = 0;
 
