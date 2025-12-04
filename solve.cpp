@@ -19,6 +19,8 @@ using std::unordered_map;
 using std::unordered_set;
 using std::vector;
 
+enum Assignment { UNASSIGNED, BOMB, EMPTY };
+
 struct Domain {
     bool canBeBomb = true;
     bool cannotBeBomb = true;
@@ -28,7 +30,12 @@ struct Domain {
 struct Tile {
     int num = 0;
     Domain domain;
-    bool hasBomb = false;
+    Assignment assignment = UNASSIGNED;
+};
+
+struct Pair {
+    int row = 0;
+    int col = 0;
 };
 
 // For the prio queue, which applies MRV and DH on the tiles.
@@ -41,11 +48,18 @@ private:
     std::vector<std::vector<Tile*>>* puzzle;
 };
 
-bool isInGrid(int x, int y);
+// checks if a pair of coords is in the 9x9 grid
+bool isInGrid(int row, int col);
+
+// returns a box from 0-8 using coords
+int getBoxFromCoords(int row, int col);
+
+// returns a pair of coords to start from based on a box
+Pair getStartCoordsFromBox(int box);
 
 // takes a pair of coordinates and
 // returns how many non-number tiles adjacent to the coordinate
-int degreeHeuristic(int x, int y, std::vector<std::vector<Tile*>>& puzzle);
+int degreeHeuristic(int row, int col, std::vector<std::vector<Tile*>>& puzzle);
 
 // takes a tile and returns number
 // of possibilities that tile has (bomb or not bomb)
@@ -93,47 +107,43 @@ vector<vector<Tile*>> readPuzzle(const string& filePath) {
     return result;
 }
 
-bool isInGrid(int x, int y) {
-    return !(x < 0 || x > 8 || y < 0 || y > 8);
+bool isInGrid(int row, int col) {
+    return !(row < 0 || row > 8 || col < 0 || col > 8);
 }
 
-int degreeHeuristic(int x, int y, std::vector<std::vector<Tile*>>& puzzle) {
-    if (!isInGrid(x, y)) return -1;
-    int unassignedNeighbours = 0;
-    // Above
-    int newX = x;
-    int newY = y - 1;
-    while (isInGrid(newX, newY)) {
-        if (!puzzle[newX][newY]->hasBomb) unassignedNeighbours++;
-        newY--;
+int degreeHeuristic(int row, int col, std::vector<std::vector<Tile*>>& puzzle) {
+    if (!isInGrid(row, col)) return -1;
+    int unassignedVariables = 0;
+
+    // unassigned variables in the row
+    for (size_t newCol = 0; newCol < puzzle.size(); ++newCol) {
+        if (newCol == col) continue;
+        if (puzzle[row][newCol]->assignment == UNASSIGNED) {
+            ++unassignedVariables;
+        }
     }
-    // Below
-    newX = x;
-    newY = y + 1;
-    while (isInGrid(newX, newY)) {
-        if (!puzzle[newX][newY]->hasBomb) unassignedNeighbours++;
-        newY++;
+
+    // unassigned variables in the column
+    for (size_t newRow = 0; newRow < puzzle.size(); ++newRow) {
+        if (newRow == row) continue;
+        if (puzzle[newRow][col]->assignment == UNASSIGNED) {
+            ++unassignedVariables;
+        }
     }
-    // Left
-    newX = x - 1;
-    newY = y;
-    while (isInGrid(newX, newY)) {
-        if (!puzzle[newX][newY]->hasBomb) unassignedNeighbours++;
-        newX--;
+
+    // unassigned variables in the box
+    int box = getBoxFromCoords(row, col);
+    Pair startCoords = getStartCoordsFromBox(box);
+    for (size_t newRow = startCoords.row; newRow < startCoords.row + 3; ++newRow) {
+        for (size_t newCol = startCoords.col; newCol < startCoords.col + 3; ++newCol) {
+            if (newRow == row || newCol == col) continue;
+            if (puzzle[newRow][col]->assignment == UNASSIGNED) {
+                ++unassignedVariables;
+            }
+        }
     }
-    // Right
-    newX = x + 1;
-    newY = y;
-    while (isInGrid(newX, newY)) {
-        if (!puzzle[newX][newY]->hasBomb) unassignedNeighbours++;
-        newX++;
-    }
-    // Diagnols
-    if (isInGrid(x + 1, y + 1)) unassignedNeighbours += (int)(puzzle[x + 1][y + 1]->hasBomb);
-    if (isInGrid(x - 1, y - 1)) unassignedNeighbours += (int)(puzzle[x - 1][y - 1]->hasBomb);
-    if (isInGrid(x - 1, y + 1)) unassignedNeighbours += (int)(puzzle[x - 1][y + 1]->hasBomb);
-    if (isInGrid(x + 1, y - 1)) unassignedNeighbours += (int)(puzzle[x + 1][y - 1]->hasBomb);
-    return unassignedNeighbours;
+
+    return unassignedVariables;
 }
 
 int mrv(Tile& tile) {
@@ -145,4 +155,12 @@ int mrv(Tile& tile) {
         ++possibilities;
     }
     return possibilities;
+}
+
+int getBoxFromCoords(int row, int col) {
+    return row / 3 + (col / 3) * 3;
+}
+
+Pair getStartCoordsFromBox(int box) {
+    return {.row = (box / 3) * 3, .col = (box % 3) * 3};
 }
