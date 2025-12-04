@@ -47,16 +47,6 @@ private:
     int unassignedTiles = 0;
 };
 
-// For the prio queue, which applies MRV and DH on the tiles.
-class TileComp {
-public:
-    bool operator()(const Tile* lhs, const Tile* rhs) const;
-
-private:
-    // needs this because of how degree heuristic works
-    vector<vector<Tile*>>* puzzle;
-};
-
 // checks if a pair of coords is in the 9x9 grid
 bool isInGrid(int row, int col);
 
@@ -99,10 +89,16 @@ bool isNumberedTileConsistent(int row, int col, vector<vector<Tile*>>& puzzle);
 
 vector<vector<Tile*>> readPuzzle(const string& filePath);
 
-void writeAnswer(vector<vector<Tile*>> puzzle);
+void writeAnswer(vector<vector<Tile*>>& puzzle);
+
+void backtrackingSearch(vector<vector<Tile*>>& puzzle);
+
+void backtrack(vector<vector<Tile*>>& puzzle);
 
 bool isInRow(int row, int col, int newRow, int newCol);
+
 bool isInCol(int row, int col, int newRow, int newCol);
+
 bool isInBox(int row, int col, int newRow, int newCol);
 
 // Inference functions
