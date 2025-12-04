@@ -128,6 +128,7 @@ int degreeHeuristic(int row, int col, vector<vector<Tile*>>& puzzle) {
     Pair startCoords = getStartCoordsFromBox(box);
     for (size_t newRow = startCoords.row; newRow < startCoords.row + 3; ++newRow) {
         for (size_t newCol = startCoords.col; newCol < startCoords.col + 3; ++newCol) {
+            // prevents recounting variables in the same row, column, and also the current tile
             if (newRow == row || newCol == col) continue;
             if (puzzle[newRow][col]->assignment == UNASSIGNED) {
                 ++unassignedVariables;
