@@ -15,7 +15,7 @@ enum Assignment { UNASSIGNED, BOMB, EMPTY };
 
 struct Domain {
     bool canBeBomb = true;
-    bool cannotBeBomb = true;
+    bool canBeEmpty = true;
 };
 
 // How we represent tiles and their information
@@ -143,7 +143,7 @@ int mrv(Tile& tile) {
     if (tile.domain.canBeBomb == true) {
         ++possibilities;
     }
-    if (tile.domain.cannotBeBomb == true) {
+    if (tile.domain.canBeEmpty == true) {
         ++possibilities;
     }
     return possibilities;
