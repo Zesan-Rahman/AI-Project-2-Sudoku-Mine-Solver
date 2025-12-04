@@ -59,17 +59,26 @@ int mrv(Tile& tile);
 
 bool isPuzzleConsistent(vector<vector<Tile*>>& puzzle);
 
-// checks row of tile and updates domain of tile
+// checks row of tile and returns the domain
 Domain getRowDomain(int row, int col, vector<vector<Tile*>>& puzzle);
 
-// checks col of tile and updates domain of tile
+// checks col of tile and returns the domain
 Domain getColDomain(int row, int col, vector<vector<Tile*>>& puzzle);
 
-// checks box of tile and updates domain of tile
+// checks box of tile and returns the domain
 Domain getBoxDomain(int row, int col, vector<vector<Tile*>>& puzzle);
 
-// checks numbers adjacent to tile and updates domain of tile
+// checks numbers adjacent to tile and returns the domain
 Domain getNumbersDomain(int row, int col, vector<vector<Tile*>>& puzzle);
+
+// checks a single numbered tile and returns the domain that the original tile should be in
+Domain getSingleNumberDomain(int row, int col, int numRow, int numCol, vector<vector<Tile*>>& puzzle);
+
+// combines a domain by doing && on both fields
+void combineDomains(Domain& lhs, const Domain& rhs);
+
+// checks if a numbered tile is consistent with its surrounding tiles
+bool isNumberedTileConsistent(int row, int col, vector<vector<Tile*>>& puzzle);
 
 vector<vector<Tile*>> readPuzzle(const string& filePath);
 
@@ -177,19 +186,29 @@ bool isPuzzleConsistent(vector<vector<Tile*>>& puzzle) {
         for (size_t col = 0; col < puzzle[row].size(); ++row) {
             Tile* currTile = puzzle[row][col];
             if (currTile->assignment != UNASSIGNED) {  // implies num == 0
-                bool consistent = true;
-                // TODO: verify consistency of assignment by checking col, row, box
-                // consistent = // some statement, probably a function
+                Domain updatedDomain;
+                combineDomains(updatedDomain, getRowDomain(row, col, puzzle));
+                combineDomains(updatedDomain, getColDomain(row, col, puzzle));
+                combineDomains(updatedDomain, getBoxDomain(row, col, puzzle));
+                combineDomains(updatedDomain, getNumbersDomain(row, col, puzzle));
 
-                if (!consistent) {
-                    return false;
+                if (currTile->assignment == BOMB && updatedDomain.canBeBomb == false) {
+                    return true;
                 }
+                if (currTile->assignment == EMPTY && updatedDomain.canBeEmpty == false) {
+                    return true;
+                }
+                currTile->domain = updatedDomain;
                 continue;
             }
 
             if (currTile->assignment == UNASSIGNED && currTile->num == 0) {
-                // TODO: update domain of possibilities by checking col, row, box
-                // and then check if domain is empty
+                Domain updatedDomain;
+                combineDomains(updatedDomain, getRowDomain(row, col, puzzle));
+                combineDomains(updatedDomain, getColDomain(row, col, puzzle));
+                combineDomains(updatedDomain, getBoxDomain(row, col, puzzle));
+                combineDomains(updatedDomain, getNumbersDomain(row, col, puzzle));
+                currTile->domain = updatedDomain;
                 if (!currTile->domain.canBeBomb && !currTile->domain.canBeEmpty) {
                     return false;
                 }
@@ -197,27 +216,7 @@ bool isPuzzleConsistent(vector<vector<Tile*>>& puzzle) {
             }
 
             // if currTile->num != 0 then verify that adjacent tiles match up
-            int adjBombs = currTile->num;
-            int adjEmptys = 8 - adjBombs;
-            for (int rowOffset = -1; rowOffset < 2; ++rowOffset) {
-                for (int colOffset = -1; colOffset < 2; ++colOffset) {
-                    if (rowOffset == 0 && colOffset == 0) continue;
-                    if (!isInGrid(col + colOffset, row + rowOffset)) {
-                        --adjEmptys;
-                        continue;
-                    }
-
-                    Tile* tile = puzzle[row + rowOffset][col + colOffset];
-                    if (tile->num == 0 && tile->assignment == BOMB) {
-                        --adjBombs;
-                    } else if (tile->num == 0 && tile->assignment == EMPTY) {
-                        --adjEmptys;
-                    }
-                }
-            }
-
-            // more bombs than possible or more emptys than possible
-            if (adjBombs < 0 || adjEmptys < 0) {
+            if (!isNumberedTileConsistent(row, col, puzzle)) {
                 return false;
             }
         }
@@ -238,12 +237,16 @@ Domain getRowDomain(int row, int col, vector<vector<Tile*>>& puzzle) {
         if (currTile->assignment == EMPTY) {
             --totalEmptys;
         }
-        if (totalBombs == 0) {
-            domain.canBeBomb = false;
-        }
-        if (totalEmptys == 0) {
-            domain.canBeEmpty = false;
-        }
+    }
+    if (totalBombs == 0) {
+        domain.canBeBomb = false;
+    }
+    if (totalEmptys == 0) {
+        domain.canBeEmpty = false;
+    }
+    if (totalBombs < 0 || totalEmptys < 0) {
+        domain.canBeBomb = false;
+        domain.canBeEmpty = false;
     }
     return domain;
 }
@@ -261,12 +264,16 @@ Domain getColDomain(int row, int col, vector<vector<Tile*>>& puzzle) {
         if (currTile->assignment == EMPTY) {
             --totalEmptys;
         }
-        if (totalBombs == 0) {
-            domain.canBeBomb = false;
-        }
-        if (totalEmptys == 0) {
-            domain.canBeEmpty = false;
-        }
+    }
+    if (totalBombs == 0) {
+        domain.canBeBomb = false;
+    }
+    if (totalEmptys == 0) {
+        domain.canBeEmpty = false;
+    }
+    if (totalBombs < 0 || totalEmptys < 0) {
+        domain.canBeBomb = false;
+        domain.canBeEmpty = false;
     }
     return domain;
 }
@@ -287,13 +294,17 @@ Domain getBoxDomain(int row, int col, vector<vector<Tile*>>& puzzle) {
             if (currTile->assignment == EMPTY) {
                 --totalEmptys;
             }
-            if (totalBombs == 0) {
-                domain.canBeBomb = false;
-            }
-            if (totalEmptys == 0) {
-                domain.canBeEmpty = false;
-            }
         }
+    }
+    if (totalBombs == 0) {
+        domain.canBeBomb = false;
+    }
+    if (totalEmptys == 0) {
+        domain.canBeEmpty = false;
+    }
+    if (totalBombs < 0 || totalEmptys < 0) {
+        domain.canBeBomb = false;
+        domain.canBeEmpty = false;
     }
     return domain;
 }
@@ -301,11 +312,80 @@ Domain getBoxDomain(int row, int col, vector<vector<Tile*>>& puzzle) {
 Domain getNumbersDomain(int row, int col, vector<vector<Tile*>>& puzzle) {
     Domain domain;
     // get surrounding tiles and then get their domains and update the domain
+    for (int rowOffset = -1; rowOffset < 2; ++rowOffset) {
+        for (int colOffset = -1; colOffset < 2; ++colOffset) {
+            if (rowOffset == 0 && colOffset == 0) continue;
+            if (!isInGrid(row + rowOffset, col + colOffset)) {
+                continue;
+            }
+            combineDomains(domain, getSingleNumberDomain(row, col, row + rowOffset, col + colOffset, puzzle));
+        }
+    }
     return domain;
 }
 
 Domain getSingleNumberDomain(int row, int col, int numRow, int numCol, vector<vector<Tile*>>& puzzle) {
-    // get a single tile's domain relative to current tile
     Domain domain;
+    Tile* numTile = puzzle[numRow][numCol];
+    if (numTile->num == 0) {
+        return domain;
+    }
+    int numBombs = numTile->num;
+    int numEmptys = 8 - numTile->num;
+    for (int rowOffset = -1; rowOffset < 2; ++rowOffset) {
+        for (int colOffset = -1; colOffset < 2; ++colOffset) {
+            if (rowOffset == 0 && colOffset == 0) continue;
+            if (!isInGrid(numRow + rowOffset, numCol + colOffset)) {
+                --numEmptys;
+                continue;
+            }
+            Tile* currTile = puzzle[row + rowOffset][col + colOffset];
+            if (currTile->num != 0 || currTile->assignment == EMPTY) {
+                --numEmptys;
+            }
+            if (currTile->assignment == BOMB) {
+                --numBombs;
+            }
+        }
+    }
+    if (numBombs == 0) {
+        domain.canBeBomb = false;
+    }
+    if (numEmptys == 0) {
+        domain.canBeEmpty = false;
+    }
+    if (numBombs < 0 || numEmptys < 0) {
+        domain.canBeBomb = false;
+        domain.canBeEmpty = false;
+    }
+    // get a single tile's domain relative to current tile
     return domain;
+}
+
+void combineDomains(Domain& lhs, const Domain& rhs) {
+    lhs.canBeBomb = lhs.canBeBomb && rhs.canBeBomb;
+    lhs.canBeEmpty = lhs.canBeEmpty && rhs.canBeEmpty;
+}
+
+bool isNumberedTileConsistent(int row, int col, vector<vector<Tile*>>& puzzle) {
+    Tile* currTile = puzzle[row][col];
+    int adjBombs = currTile->num;
+    int adjEmptys = 8 - adjBombs;
+    for (int rowOffset = -1; rowOffset < 2; ++rowOffset) {
+        for (int colOffset = -1; colOffset < 2; ++colOffset) {
+            if (rowOffset == 0 && colOffset == 0) continue;
+            if (!isInGrid(row + rowOffset, col + colOffset)) {
+                --adjEmptys;
+                continue;
+            }
+
+            Tile* tile = puzzle[row + rowOffset][col + colOffset];
+            if (tile->num == 0 && tile->assignment == BOMB) {
+                --adjBombs;
+            } else if (tile->num == 0 && tile->assignment == EMPTY) {
+                --adjEmptys;
+            }
+        }
+    }
+    return adjBombs < 0 || adjEmptys < 0;
 }
