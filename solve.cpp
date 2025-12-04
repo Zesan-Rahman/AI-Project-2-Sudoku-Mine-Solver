@@ -91,9 +91,7 @@ vector<vector<Tile*>> readPuzzle(const string& filePath);
 
 void writeAnswer(vector<vector<Tile*>>& puzzle);
 
-void backtrackingSearch(vector<vector<Tile*>>& puzzle);
-
-void backtrack(vector<vector<Tile*>>& puzzle);
+bool backtrackingSearch(vector<vector<Tile*>>& puzzle);
 
 bool isInRow(int row, int col, int newRow, int newCol);
 
@@ -460,5 +458,18 @@ bool isInBox(int row, int col, int newRow, int newCol) {
             }
         }
     }
+    return false;
+}
+
+bool backtrackingSearch(vector<vector<Tile*>>& puzzle) {
+    // if assignment is complete return true
+    // loop over puzzle and get best tile to change with mrv + dh
+    // change tile value to empty, then bomb in second loop if empty fails
+    // if is consistent then
+    // run inference on csp and see if any fail
+    // if none fail then recursively backtrack
+    // if that succeeds return true
+    // otherwise reset the tile's value
+    // return false to upward call
     return false;
 }
