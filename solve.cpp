@@ -1,22 +1,14 @@
 #include <fstream>
 #include <iostream>
-#include <queue>
 #include <string>
-#include <unordered_map>
-#include <unordered_set>
 #include <vector>
 
-using std::abs;
 using std::cout;
 using std::endl;
 using std::fstream;
-using std::getline;
 using std::iostream;
 using std::ofstream;
-using std::priority_queue;
 using std::string;
-using std::unordered_map;
-using std::unordered_set;
 using std::vector;
 
 enum Assignment { UNASSIGNED, BOMB, EMPTY };
