@@ -254,7 +254,6 @@ bool isPuzzleConsistent(vector<vector<Tile*>>& puzzle) {
                 if (currTile->assignment == EMPTY && updatedDomain.canBeEmpty == false) {
                     return true;
                 }
-                currTile->domain = updatedDomain;
                 continue;
             }
 
@@ -264,7 +263,6 @@ bool isPuzzleConsistent(vector<vector<Tile*>>& puzzle) {
                 combineDomains(updatedDomain, getColDomain(row, col, puzzle));
                 combineDomains(updatedDomain, getBoxDomain(row, col, puzzle));
                 combineDomains(updatedDomain, getNumbersDomain(row, col, puzzle));
-                currTile->domain = updatedDomain;
                 if (!currTile->domain.canBeBomb && !currTile->domain.canBeEmpty) {
                     return false;
                 }
@@ -478,6 +476,7 @@ bool backtrackingSearch(vector<vector<Tile*>>& puzzle) {
 
     Tile* chosenTile = selectUnassignedVariable(puzzle);
 
+    chosenTile->assignment = EMPTY;
     // loop over puzzle and get best tile to change with mrv + dh
     // change tile value to empty, then bomb in second loop if empty fails
     // if is consistent then
