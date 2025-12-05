@@ -193,7 +193,7 @@ int degreeHeuristic(int row, int col, vector<vector<Tile*>>& puzzle) {
             Tile* tile = puzzle[row + rowOffset][col + colOffset];
             if (tile->num == 0) continue;
 
-            // get the tiles adjacent to the NUMBERED tile and see if they are unassigned
+            // get the tiles adjacent to the numbered tile and see if they are unassigned
             for (int numRowOffset = -1; numRowOffset < 2; ++numRowOffset) {
                 for (int numColOffset = -1; numColOffset < 2; ++numColOffset) {
                     // don't add dupes
@@ -205,6 +205,7 @@ int degreeHeuristic(int row, int col, vector<vector<Tile*>>& puzzle) {
                     if (isInRow(row, col, currRow, currCol)) continue;
                     if (isInCol(row, col, currRow, currCol)) continue;
                     if (isInBox(row, col, currRow, currCol)) continue;
+
                     Tile* tile = puzzle[row + numRowOffset][col + numColOffset];
                     if (tile->assignment == UNASSIGNED && tile->num == 0) {
                         helper.addTile(currRow, currCol);
