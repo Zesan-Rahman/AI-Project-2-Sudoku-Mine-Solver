@@ -102,6 +102,12 @@ bool isInBox(int row, int col, int newRow, int newCol);
 // Inference functions
 bool forwardChecking(vector<vector<Tile*>>& puzzle);
 
+// chooses the next best tile
+Tile* selectUnassignedVariable(vector<vector<Tile*>>& puzzle);
+
+// sees if there are any unassigned tiles in the puzzle
+bool isPuzzleComplete(vector<vector<Tile*>>& puzzle);
+
 int main(int argc, char* argv[]) {
     if (argc != 2) {
         cout << "Run ./solve.o fileName (e.g. ./solve.o input.txt)" << endl;
@@ -463,6 +469,15 @@ bool isInBox(int row, int col, int newRow, int newCol) {
 
 bool backtrackingSearch(vector<vector<Tile*>>& puzzle) {
     // if assignment is complete return true
+    bool isComplete = isPuzzleComplete(puzzle);
+    // WARN: my intuition says this might cause problems during the
+    // final recursive call with the isPuzzleConsistent call
+    if (isComplete == true && isPuzzleConsistent(puzzle)) {
+        return true;
+    }
+
+    Tile* chosenTile = selectUnassignedVariable(puzzle);
+
     // loop over puzzle and get best tile to change with mrv + dh
     // change tile value to empty, then bomb in second loop if empty fails
     // if is consistent then
@@ -472,4 +487,42 @@ bool backtrackingSearch(vector<vector<Tile*>>& puzzle) {
     // otherwise reset the tile's value
     // return false to upward call
     return false;
+}
+
+Tile* selectUnassignedVariable(vector<vector<Tile*>>& puzzle) {
+    // mrv: lower = better
+    int bestMrv = 2;
+    // dh: higher = better
+    int bestDH = 0;
+    Tile* nextTile = nullptr;
+    // one pass search for the best tile to assign next
+    for (size_t row = 0; row < puzzle.size(); ++row) {
+        for (size_t col = 0; col < puzzle[row].size(); ++col) {
+            Tile* tile = puzzle[row][col];
+            if (tile->num != 0 || tile->assignment != UNASSIGNED) continue;
+            int mrvVal = mrv(*tile);
+            if (mrvVal > bestMrv) {
+                continue;
+            }
+            int dhVal = degreeHeuristic(row, col, puzzle);
+            if (mrvVal < bestMrv || dhVal > bestDH) {
+                bestMrv = mrvVal;
+                bestDH = dhVal;
+                nextTile = tile;
+            }
+        }
+    }
+    return nextTile;
+}
+
+bool isPuzzleComplete(vector<vector<Tile*>>& puzzle) {
+    bool hasUnassigned = false;
+    for (vector<Tile*>& row : puzzle) {
+        for (Tile* tile : row) {
+            if (tile->assignment != UNASSIGNED && tile->num == 0) {
+                hasUnassigned = true;
+            }
+        }
+    }
+    return !hasUnassigned;
 }
