@@ -100,7 +100,19 @@ bool isInCol(int row, int col, int newRow, int newCol);
 bool isInBox(int row, int col, int newRow, int newCol);
 
 // Inference functions
-bool forwardChecking(vector<vector<Tile*>>& puzzle);
+bool forwardChecking(int row, int col, vector<vector<Tile*>>& puzzle);
+
+// Forward checks all the tiles in the row, column, and box. If forward check fails, all tiles domains stay the
+// same. If forward check succeeds, tile domains get updated
+bool forwardCheckRow(int row, int col, vector<vector<Tile*>>& puzzle);
+bool forwardCheckCol(int row, int col, vector<vector<Tile*>>& puzzle);
+bool forwardCheckBox(int row, int col, vector<vector<Tile*>>& puzzle);
+
+// Checks if a specific numbered tile needs to update domains of the tiles around it
+bool forwardCheckNumberedTile(int row, int col, vector<vector<Tile*>>& puzzle);
+// Checks all numbered tiles around a newly assigned tile and forward checks each individual tile with function
+// above.
+bool forwardCheckNumberedTiles(int row, int col, vector<vector<Tile*>>& puzzle);
 
 // chooses the next best tile
 Tile* selectUnassignedVariable(vector<vector<Tile*>>& puzzle);
@@ -525,4 +537,186 @@ bool isPuzzleComplete(vector<vector<Tile*>>& puzzle) {
         }
     }
     return !hasUnassigned;
+}
+
+bool forwardCheckRow(int row, int col, vector<vector<Tile*>>& puzzle) {
+    int numBombs = 0;
+    int numEmptys = 0;
+    for (size_t c = 0; c < puzzle[row].size(); ++c) {
+        numBombs += (puzzle[row][c]->assignment == BOMB);
+        numEmptys += (puzzle[row][c]->assignment == EMPTY);
+    }
+    // Check if we are third bomb. If we are, remove canBeBomb from every other unassigned tile's domain
+    if (puzzle[row][col]->assignment == BOMB && numBombs == 3) {
+        for (size_t c = 0; c < puzzle[row].size(); ++c) {
+            if (c == col || puzzle[row][c]->num != 0 || puzzle[row][c]->assignment != UNASSIGNED) continue;
+            puzzle[row][c]->domain.canBeBomb = false;
+            if (!puzzle[row][c]->domain.canBeBomb && !puzzle[row][c]->domain.canBeEmpty) {
+                return false;
+            }
+        }
+    }
+    // We are the 6th empty
+    if (puzzle[row][col]->assignment == EMPTY && numEmptys == 6) {
+        for (size_t c = 0; c < puzzle[row].size(); ++c) {
+            if (c == col || puzzle[row][c]->num != 0 || puzzle[row][c]->assignment != UNASSIGNED) continue;
+            puzzle[row][c]->domain.canBeEmpty = false;
+            if (!puzzle[row][c]->domain.canBeBomb && !puzzle[row][c]->domain.canBeEmpty) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+bool forwardCheckCol(int row, int col, vector<vector<Tile*>>& puzzle) {
+    int numBombs = 0;
+    int numEmptys = 0;
+    for (size_t r = 0; r < puzzle.size(); ++r) {
+        numBombs += (puzzle[r][col]->assignment == BOMB);
+        numEmptys += (puzzle[r][col]->assignment == EMPTY);
+    }
+    // Check if we are third bomb. If we are, remove canBeBomb from every other unassigned tile's domain
+    if (puzzle[row][col]->assignment == BOMB && numBombs == 3) {
+        for (size_t r = 0; r < puzzle[row].size(); ++r) {
+            if (r == row || puzzle[r][col]->num != 0 || puzzle[r][col]->assignment != UNASSIGNED) continue;
+            if (!puzzle[r][col]->domain.canBeBomb && !puzzle[r][col]->domain.canBeEmpty) {
+                return false;
+            }
+        }
+    }
+    // We are the 6th empty
+    if (puzzle[row][col]->assignment == EMPTY && numEmptys == 6) {
+        for (size_t r = 0; r < puzzle[row].size(); ++r) {
+            if (r == row || puzzle[r][col]->num != 0 || puzzle[r][col]->assignment != UNASSIGNED) continue;
+            puzzle[r][col]->domain.canBeEmpty = false;
+            if (!puzzle[r][col]->domain.canBeBomb && !puzzle[r][col]->domain.canBeEmpty) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+bool forwardCheckBox(int row, int col, vector<vector<Tile*>>& puzzle) {
+    int numBombs = 0;
+    int numEmptys = 0;
+    // Check box
+    Pair startCoords = getStartCoordsFromBox(getBoxFromCoords(row, col));
+    for (size_t r = startCoords.row; r < startCoords.row + 3; ++r) {
+        for (size_t c = startCoords.col; c < startCoords.col + 3; ++c) {
+            // Tile has been checked by row and col
+            numBombs += (puzzle[r][c]->assignment == BOMB);
+            numEmptys += (puzzle[r][c]->assignment == EMPTY);
+        }
+    }
+
+    if (puzzle[row][col]->assignment == BOMB && numBombs == 3) {
+        for (size_t r = startCoords.row; r < startCoords.row + 3; ++r) {
+            for (size_t c = startCoords.col; c < startCoords.col + 3; ++c) {
+                if (r == row && c == col) continue;
+                if (puzzle[r][c]->num != 0 || puzzle[r][c]->assignment != UNASSIGNED) continue;
+                puzzle[r][c]->domain.canBeBomb = false;
+                if (!puzzle[r][c]->domain.canBeBomb && !puzzle[r][c]->domain.canBeEmpty) {
+                    return false;
+                }
+            }
+        }
+    }
+    // We are the 6th empty
+    if (puzzle[row][col]->assignment == EMPTY && numEmptys == 6) {
+        for (size_t r = startCoords.row; r < startCoords.row + 3; ++r) {
+            for (size_t c = startCoords.col; c < startCoords.col; ++c) {
+                if (r == row && c == col) continue;
+                if (puzzle[r][c]->num != 0 || puzzle[r][c]->assignment != UNASSIGNED) continue;
+                puzzle[r][c]->domain.canBeBomb = false;
+                if (!puzzle[r][c]->domain.canBeBomb && !puzzle[r][c]->domain.canBeEmpty) {
+                    return false;
+                }
+            }
+        }
+    }
+    return true;
+}
+
+bool forwardCheckNumberedTile(int row, int col, vector<vector<Tile*>>& puzzle) {
+    int numBombs = 0;
+    int numEmptys = 0;
+    int maxEmptys = 8;
+    for (int rowOffset = -1; rowOffset < 2; ++rowOffset) {
+        for (int colOffset = -1; colOffset < 2; ++colOffset) {
+            if (rowOffset == 0 && colOffset == 0) continue;
+            if (!isInGrid(row + rowOffset, col + colOffset)) {
+                maxEmptys--;
+                continue;
+            }
+            numBombs += puzzle[row + rowOffset][col + colOffset]->assignment == BOMB;
+            numEmptys += puzzle[row + rowOffset][col + colOffset]->assignment == EMPTY;
+        }
+    }
+    // Check if maxBombs allowed reached and if so, set everything around to cannotbebomb
+    if (numBombs == puzzle[row][col]->num) {
+        for (int rowOffset = -1; rowOffset < 2; ++rowOffset) {
+            for (int colOffset = -1; colOffset < 2; ++colOffset) {
+                if (rowOffset == 0 && colOffset == 0) continue;
+                int r = row + rowOffset;
+                int c = col + colOffset;
+                if (!isInGrid(r, c)) continue;
+                if (puzzle[r][c]->num != 0 || puzzle[r][c]->assignment != UNASSIGNED) continue;
+                puzzle[r][c]->domain.canBeBomb = false;
+                if (!puzzle[r][c]->domain.canBeBomb && !puzzle[r][c]->domain.canBeEmpty) {
+                    return false;
+                }
+            }
+        }
+    }
+    // Check if maxEmptys allowed reached:
+    if (numEmptys == maxEmptys) {
+        for (int rowOffset = -1; rowOffset < 2; ++rowOffset) {
+            for (int colOffset = -1; colOffset < 2; ++colOffset) {
+                if (rowOffset == 0 && colOffset == 0) continue;
+                int r = row + rowOffset;
+                int c = col + colOffset;
+                if (!isInGrid(r, c)) continue;
+                if (puzzle[r][c]->num != 0 || puzzle[r][c]->assignment != UNASSIGNED) continue;
+                puzzle[r][c]->domain.canBeEmpty = false;
+                if (!puzzle[r][c]->domain.canBeBomb && !puzzle[r][c]->domain.canBeEmpty) {
+                    return false;
+                }
+            }
+        }
+    }
+    return true;
+}
+
+bool forwardCheckNumberedTiles(int row, int col, vector<vector<Tile*>>& puzzle) {
+    for (int rowOffset = -1; rowOffset < 2; ++rowOffset) {
+        for (int colOffset = -1; colOffset < 2; ++colOffset) {
+            if (rowOffset == 0 && colOffset == 0) continue;
+            if (!isInGrid(row + rowOffset, col + colOffset) || puzzle[row + rowOffset][col + colOffset]->num == 0)
+                continue;
+            // We are at a numbered tile
+            if (!forwardCheckNumberedTile(row + rowOffset, col + colOffset, puzzle)) return false;
+        }
+    }
+    return true;
+}
+
+bool forwardChecking(int row, int col, vector<vector<Tile*>>& puzzle) {
+    // Fail-safe in case forwardChecking ends with a failure.
+    vector<vector<Tile>> copy;
+    for (size_t row = 0; row < puzzle.size(); ++row) {
+        for (size_t col = 0; col < puzzle.size(); ++col) {
+            copy[row][col] = *puzzle[row][col];
+        }
+    }
+    if (forwardCheckRow(row, col, puzzle) && forwardCheckCol(row, col, puzzle) &&
+        forwardCheckBox(row, col, puzzle) && forwardCheckNumberedTiles(row, col, puzzle))
+        return true;
+    for (size_t row = 0; row < puzzle.size(); ++row) {
+        for (size_t col = 0; col < puzzle.size(); ++col) {
+            *puzzle[row][col] = copy[row][col];
+        }
+    }
+    return false;
 }
