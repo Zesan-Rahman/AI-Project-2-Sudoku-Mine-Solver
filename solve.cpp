@@ -66,6 +66,8 @@ int mrv(Tile& tile);
 
 bool isPuzzleConsistent(vector<vector<Tile*>>& puzzle);
 
+Pair getCoordsOfTile(const Tile* tile, vector<vector<Tile*>> puzzle);
+
 // checks row of tile and returns the domain
 Domain getRowDomain(int row, int col, vector<vector<Tile*>>& puzzle);
 
@@ -126,11 +128,27 @@ int main(int argc, char* argv[]) {
         return 1;
     }
     vector<vector<Tile*>> puzzle = readPuzzle(argv[1]);
-    for (size_t row = 0; row < puzzle.size(); ++row) {
-        for (size_t col = 0; col < puzzle[row].size(); ++col) {
-            delete puzzle[row][col];
-        }
-    }
+    // Forward check numbered tiles test
+    // puzzle[0][1]->assignment = BOMB;
+    // forwardCheckNumberedTiles(0, 1, puzzle);
+    // cout << puzzle[1][0]->domain.canBeBomb << endl;
+    // Forward check col test
+    // puzzle[0][3]->assignment = BOMB;
+    // forwardCheckCol(0, 3, puzzle);
+    // puzzle[1][3]->assignment = BOMB;
+    // forwardCheckCol(1, 3, puzzle);
+    // puzzle[4][3]->assignment = BOMB;
+    // forwardCheckCol(4, 3, puzzle);
+    // // forwardcheck row test
+    // puzzle[1][0]->assignment = BOMB;
+    // cout << forwardCheckRow(1, 0, puzzle) << endl;
+    // puzzle[1][2]->assignment = BOMB;
+    // cout << forwardCheckRow(1, 2, puzzle) << endl;
+    // puzzle[1][3]->assignment = BOMB;
+    // cout << forwardCheckRow(1, 3, puzzle) << endl;
+    // cout << puzzle[1][4]->domain.canBeBomb << endl;
+    backtrackingSearch(puzzle);
+    writeAnswer(puzzle);
 }
 
 vector<vector<Tile*>> readPuzzle(const string& filePath) {
@@ -488,8 +506,28 @@ bool backtrackingSearch(vector<vector<Tile*>>& puzzle) {
     }
 
     Tile* chosenTile = selectUnassignedVariable(puzzle);
-
-    chosenTile->assignment = EMPTY;
+    if (!chosenTile) return false;
+    Pair chosenTileCoords = getCoordsOfTile(chosenTile, puzzle);
+    cout << "Row:	Col:" << endl;
+    cout << chosenTileCoords.row << "	" << chosenTileCoords.col << endl;
+    vector<int> domain{0, 1};
+    for (int value : domain) {
+        // If value is consistent with assignment
+        if (value == 0 && !chosenTile->domain.canBeEmpty) continue;
+        if (value == 1 && !chosenTile->domain.canBeBomb) continue;
+        // Add var = value to assignment
+        value ? chosenTile->assignment = BOMB : chosenTile->assignment = EMPTY;
+        vector<vector<Tile*>> copy = puzzle;
+        bool inference = forwardChecking(chosenTileCoords.row, chosenTileCoords.col, puzzle);
+        // inference != failure
+        if (inference) {
+            bool resultPassed = backtrackingSearch(puzzle);
+            if (resultPassed) return resultPassed;
+            // Remove inferences from csp
+            puzzle = copy;
+        }
+        value ? chosenTile->domain.canBeBomb = false : chosenTile->domain.canBeEmpty = false;
+    }
     // loop over puzzle and get best tile to change with mrv + dh
     // change tile value to empty, then bomb in second loop if empty fails
     // if is consistent then
@@ -580,6 +618,7 @@ bool forwardCheckCol(int row, int col, vector<vector<Tile*>>& puzzle) {
     if (puzzle[row][col]->assignment == BOMB && numBombs == 3) {
         for (size_t r = 0; r < puzzle[row].size(); ++r) {
             if (r == row || puzzle[r][col]->num != 0 || puzzle[r][col]->assignment != UNASSIGNED) continue;
+            puzzle[r][col]->domain.canBeBomb = false;
             if (!puzzle[r][col]->domain.canBeBomb && !puzzle[r][col]->domain.canBeEmpty) {
                 return false;
             }
@@ -704,7 +743,7 @@ bool forwardCheckNumberedTiles(int row, int col, vector<vector<Tile*>>& puzzle) 
 
 bool forwardChecking(int row, int col, vector<vector<Tile*>>& puzzle) {
     // Fail-safe in case forwardChecking ends with a failure.
-    vector<vector<Tile>> copy;
+    vector<vector<Tile>> copy(puzzle.size(), vector<Tile>(puzzle[0].size()));
     for (size_t row = 0; row < puzzle.size(); ++row) {
         for (size_t col = 0; col < puzzle.size(); ++col) {
             copy[row][col] = *puzzle[row][col];
@@ -719,4 +758,24 @@ bool forwardChecking(int row, int col, vector<vector<Tile*>>& puzzle) {
         }
     }
     return false;
+}
+
+Pair getCoordsOfTile(const Tile* tile, vector<vector<Tile*>> puzzle) {
+    for (int row = 0; row < puzzle.size(); ++row) {
+        for (int col = 0; col < puzzle.size(); ++col) {
+            if (tile == puzzle[row][col]) return Pair{row, col};
+        }
+    }
+    return Pair{0, 0};
+}
+
+void writeAnswer(vector<vector<Tile*>>& puzzle) {
+    ofstream outputFile("output.txt");
+    for (size_t row = 0; row < puzzle.size(); ++row) {
+        for (size_t col = 0; col < puzzle[row].size(); ++col) {
+            outputFile << (puzzle[row][col]->assignment == BOMB) << " ";
+            delete puzzle[row][col];
+        }
+        outputFile << endl;
+    }
 }
