@@ -494,12 +494,8 @@ bool backtrackingSearch(vector<vector<Tile*>>& puzzle) {
     if (isComplete == true) {
         string currStatus = puzzleStatus(puzzle);
         const char* currentStatus = currStatus.c_str();
-        if (isPuzzleConsistent(puzzle)) {
-            string currStatus = puzzleStatus(puzzle);
-            const char* currentStatus = currStatus.c_str();
-            // cout << currStatus << endl;
-            return true;
-        }
+        cout << endl << currStatus << endl;
+        return true;
     }
 
     Tile* chosenTile = selectUnassignedVariable(puzzle);
