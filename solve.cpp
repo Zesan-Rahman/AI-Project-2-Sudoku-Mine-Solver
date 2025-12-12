@@ -30,6 +30,10 @@ struct Pair {
     int col = 0;
 };
 
+struct Node {
+    vector<vector<Tile>> puzzle;
+};
+
 class NumberedTileHelper {
 public:
     void addTile(int row, int col) {
@@ -122,31 +126,17 @@ Tile* selectUnassignedVariable(vector<vector<Tile*>>& puzzle);
 // sees if there are any unassigned tiles in the puzzle
 bool isPuzzleComplete(vector<vector<Tile*>>& puzzle);
 
+vector<vector<Tile>> makeCopy(vector<vector<Tile*>>& puzzle);
+void copyPuzzle(vector<vector<Tile*>>& puzzle, vector<vector<Tile>>& copy);
+
+string puzzleStatus(const vector<vector<Tile*>>& puzzle);
+
 int main(int argc, char* argv[]) {
     if (argc != 2) {
         cout << "Run ./solve.o fileName (e.g. ./solve.o input.txt)" << endl;
         return 1;
     }
     vector<vector<Tile*>> puzzle = readPuzzle(argv[1]);
-    // Forward check numbered tiles test
-    // puzzle[0][1]->assignment = BOMB;
-    // forwardCheckNumberedTiles(0, 1, puzzle);
-    // cout << puzzle[1][0]->domain.canBeBomb << endl;
-    // Forward check col test
-    // puzzle[0][3]->assignment = BOMB;
-    // forwardCheckCol(0, 3, puzzle);
-    // puzzle[1][3]->assignment = BOMB;
-    // forwardCheckCol(1, 3, puzzle);
-    // puzzle[4][3]->assignment = BOMB;
-    // forwardCheckCol(4, 3, puzzle);
-    // // forwardcheck row test
-    // puzzle[1][0]->assignment = BOMB;
-    // cout << forwardCheckRow(1, 0, puzzle) << endl;
-    // puzzle[1][2]->assignment = BOMB;
-    // cout << forwardCheckRow(1, 2, puzzle) << endl;
-    // puzzle[1][3]->assignment = BOMB;
-    // cout << forwardCheckRow(1, 3, puzzle) << endl;
-    // cout << puzzle[1][4]->domain.canBeBomb << endl;
     backtrackingSearch(puzzle);
     writeAnswer(puzzle);
 }
@@ -163,6 +153,7 @@ vector<vector<Tile*>> readPuzzle(const string& filePath) {
     while (fd >> c) {
         if (c >= '0' && c <= '8') {
             Tile* newTile = new Tile{.num = c - '0'};
+            newTile->num == 0 ? newTile->assignment = UNASSIGNED : newTile->assignment = EMPTY;
             row.push_back(newTile);
         }
         if (row.size() == 9) {
@@ -280,10 +271,10 @@ bool isPuzzleConsistent(vector<vector<Tile*>>& puzzle) {
                 combineDomains(updatedDomain, getNumbersDomain(row, col, puzzle));
 
                 if (currTile->assignment == BOMB && updatedDomain.canBeBomb == false) {
-                    return true;
+                    return false;
                 }
                 if (currTile->assignment == EMPTY && updatedDomain.canBeEmpty == false) {
-                    return true;
+                    return false;
                 }
                 continue;
             }
@@ -424,6 +415,7 @@ Domain getSingleNumberDomain(int row, int col, int numRow, int numCol, vector<ve
                 --numEmptys;
                 continue;
             }
+            if (!isInGrid(row + rowOffset, col + colOffset)) continue;
             Tile* currTile = puzzle[row + rowOffset][col + colOffset];
             if (currTile->num != 0 || currTile->assignment == EMPTY) {
                 --numEmptys;
@@ -501,15 +493,22 @@ bool backtrackingSearch(vector<vector<Tile*>>& puzzle) {
     bool isComplete = isPuzzleComplete(puzzle);
     // WARN: my intuition says this might cause problems during the
     // final recursive call with the isPuzzleConsistent call
-    if (isComplete == true && isPuzzleConsistent(puzzle)) {
-        return true;
+    if (isComplete == true) {
+        string currStatus = puzzleStatus(puzzle);
+        const char* currentStatus = currStatus.c_str();
+        if (isPuzzleConsistent(puzzle)) {
+            string currStatus = puzzleStatus(puzzle);
+            const char* currentStatus = currStatus.c_str();
+            // cout << currStatus << endl;
+            return true;
+        }
     }
 
     Tile* chosenTile = selectUnassignedVariable(puzzle);
     if (!chosenTile) return false;
     Pair chosenTileCoords = getCoordsOfTile(chosenTile, puzzle);
-    cout << "Row:	Col:" << endl;
-    cout << chosenTileCoords.row << "	" << chosenTileCoords.col << endl;
+    // cout << "Row:	Col:" << endl;
+    // cout << chosenTileCoords.row << "	" << chosenTileCoords.col << endl;
     vector<int> domain{0, 1};
     for (int value : domain) {
         // If value is consistent with assignment
@@ -517,14 +516,16 @@ bool backtrackingSearch(vector<vector<Tile*>>& puzzle) {
         if (value == 1 && !chosenTile->domain.canBeBomb) continue;
         // Add var = value to assignment
         value ? chosenTile->assignment = BOMB : chosenTile->assignment = EMPTY;
-        vector<vector<Tile*>> copy = puzzle;
+        string currStatus = puzzleStatus(puzzle);
+        const char* currentStatus = currStatus.c_str();
+        vector<vector<Tile>> copy = makeCopy(puzzle);
         bool inference = forwardChecking(chosenTileCoords.row, chosenTileCoords.col, puzzle);
         // inference != failure
         if (inference) {
             bool resultPassed = backtrackingSearch(puzzle);
             if (resultPassed) return resultPassed;
             // Remove inferences from csp
-            puzzle = copy;
+            copyPuzzle(puzzle, copy);
         }
         value ? chosenTile->domain.canBeBomb = false : chosenTile->domain.canBeEmpty = false;
     }
@@ -569,7 +570,7 @@ bool isPuzzleComplete(vector<vector<Tile*>>& puzzle) {
     bool hasUnassigned = false;
     for (vector<Tile*>& row : puzzle) {
         for (Tile* tile : row) {
-            if (tile->assignment != UNASSIGNED && tile->num == 0) {
+            if (tile->assignment == UNASSIGNED && tile->num == 0) {
                 hasUnassigned = true;
             }
         }
@@ -594,7 +595,7 @@ bool forwardCheckRow(int row, int col, vector<vector<Tile*>>& puzzle) {
             }
         }
     }
-    // We are the 6th empty
+    // We are the final empty possible
     if (puzzle[row][col]->assignment == EMPTY && numEmptys == 6) {
         for (size_t c = 0; c < puzzle[row].size(); ++c) {
             if (c == col || puzzle[row][c]->num != 0 || puzzle[row][c]->assignment != UNASSIGNED) continue;
@@ -624,7 +625,7 @@ bool forwardCheckCol(int row, int col, vector<vector<Tile*>>& puzzle) {
             }
         }
     }
-    // We are the 6th empty
+    // We are the final empty allowed
     if (puzzle[row][col]->assignment == EMPTY && numEmptys == 6) {
         for (size_t r = 0; r < puzzle[row].size(); ++r) {
             if (r == row || puzzle[r][col]->num != 0 || puzzle[r][col]->assignment != UNASSIGNED) continue;
@@ -649,7 +650,7 @@ bool forwardCheckBox(int row, int col, vector<vector<Tile*>>& puzzle) {
             numEmptys += (puzzle[r][c]->assignment == EMPTY);
         }
     }
-
+    // We are the 3rd bomb in the box
     if (puzzle[row][col]->assignment == BOMB && numBombs == 3) {
         for (size_t r = startCoords.row; r < startCoords.row + 3; ++r) {
             for (size_t c = startCoords.col; c < startCoords.col + 3; ++c) {
@@ -662,7 +663,8 @@ bool forwardCheckBox(int row, int col, vector<vector<Tile*>>& puzzle) {
             }
         }
     }
-    // We are the 6th empty
+
+    // We are the final empty
     if (puzzle[row][col]->assignment == EMPTY && numEmptys == 6) {
         for (size_t r = startCoords.row; r < startCoords.row + 3; ++r) {
             for (size_t c = startCoords.col; c < startCoords.col; ++c) {
@@ -685,7 +687,8 @@ bool forwardCheckNumberedTile(int row, int col, vector<vector<Tile*>>& puzzle) {
     for (int rowOffset = -1; rowOffset < 2; ++rowOffset) {
         for (int colOffset = -1; colOffset < 2; ++colOffset) {
             if (rowOffset == 0 && colOffset == 0) continue;
-            if (!isInGrid(row + rowOffset, col + colOffset)) {
+            if (!isInGrid(row + rowOffset, col + colOffset) ||
+                puzzle[row + rowOffset][col + colOffset]->num != 0) {
                 maxEmptys--;
                 continue;
             }
@@ -709,7 +712,7 @@ bool forwardCheckNumberedTile(int row, int col, vector<vector<Tile*>>& puzzle) {
             }
         }
     }
-    // Check if maxEmptys allowed reached:
+    // Check if maxEmptys allowed reached and if so, set everything around to cannotBeEmpty
     if (numEmptys == maxEmptys) {
         for (int rowOffset = -1; rowOffset < 2; ++rowOffset) {
             for (int colOffset = -1; colOffset < 2; ++colOffset) {
@@ -743,20 +746,11 @@ bool forwardCheckNumberedTiles(int row, int col, vector<vector<Tile*>>& puzzle) 
 
 bool forwardChecking(int row, int col, vector<vector<Tile*>>& puzzle) {
     // Fail-safe in case forwardChecking ends with a failure.
-    vector<vector<Tile>> copy(puzzle.size(), vector<Tile>(puzzle[0].size()));
-    for (size_t row = 0; row < puzzle.size(); ++row) {
-        for (size_t col = 0; col < puzzle.size(); ++col) {
-            copy[row][col] = *puzzle[row][col];
-        }
-    }
+    vector<vector<Tile>> copy = makeCopy(puzzle);
     if (forwardCheckRow(row, col, puzzle) && forwardCheckCol(row, col, puzzle) &&
         forwardCheckBox(row, col, puzzle) && forwardCheckNumberedTiles(row, col, puzzle))
         return true;
-    for (size_t row = 0; row < puzzle.size(); ++row) {
-        for (size_t col = 0; col < puzzle.size(); ++col) {
-            *puzzle[row][col] = copy[row][col];
-        }
-    }
+    copyPuzzle(puzzle, copy);
     return false;
 }
 
@@ -778,4 +772,39 @@ void writeAnswer(vector<vector<Tile*>>& puzzle) {
         }
         outputFile << endl;
     }
+}
+
+vector<vector<Tile>> makeCopy(vector<vector<Tile*>>& puzzle) {
+    vector<vector<Tile>> copy(puzzle.size(), vector<Tile>(puzzle[0].size()));
+    for (size_t row = 0; row < puzzle.size(); ++row) {
+        for (size_t col = 0; col < puzzle[row].size(); ++col) {
+            copy[row][col] = *puzzle[row][col];
+        }
+    }
+    return copy;
+}
+void copyPuzzle(vector<vector<Tile*>>& puzzle, vector<vector<Tile>>& copy) {
+    for (size_t row = 0; row < puzzle.size(); ++row) {
+        for (size_t col = 0; col < puzzle[row].size(); ++col) {
+            *puzzle[row][col] = copy[row][col];
+        }
+    }
+}
+string puzzleStatus(const vector<vector<Tile*>>& puzzle) {
+    string result = "";
+    for (size_t row = 0; row < puzzle.size(); ++row) {
+        for (size_t col = 0; col < puzzle.size(); ++col) {
+            if (puzzle[row][col]->num != 0)
+                result += std::to_string(puzzle[row][col]->num);
+            else if (puzzle[row][col]->assignment == BOMB)
+                result += "B";
+            else if (puzzle[row][col]->assignment == EMPTY)
+                result += "E";
+            else
+                result += "0";
+            result += " ";
+        }
+        result += "\n";
+    }
+    return result;
 }
