@@ -387,13 +387,11 @@ Domain getBoxDomain(int row, int col, vector<vector<Tile*>>& puzzle) {
 
 Domain getNumbersDomain(int row, int col, vector<vector<Tile*>>& puzzle) {
     Domain domain;
-    // get surrounding tiles and then get their domains and update the domain
+    // get surrounding numbered tiles and enforce their domain restrictions on the current tile
     for (int rowOffset = -1; rowOffset < 2; ++rowOffset) {
         for (int colOffset = -1; colOffset < 2; ++colOffset) {
             if (rowOffset == 0 && colOffset == 0) continue;
-            if (!isInGrid(row + rowOffset, col + colOffset)) {
-                continue;
-            }
+            if (!isInGrid(row + rowOffset, col + colOffset)) continue;
             combineDomains(domain, getSingleNumberDomain(row, col, row + rowOffset, col + colOffset, puzzle));
         }
     }
@@ -403,11 +401,10 @@ Domain getNumbersDomain(int row, int col, vector<vector<Tile*>>& puzzle) {
 Domain getSingleNumberDomain(int row, int col, int numRow, int numCol, vector<vector<Tile*>>& puzzle) {
     Domain domain;
     Tile* numTile = puzzle[numRow][numCol];
-    if (numTile->num == 0) {
-        return domain;
-    }
+    if (numTile->num == 0) return domain;
     int numBombs = numTile->num;
     int numEmptys = 8 - numTile->num;
+    // get the surrounding tiles of numTile and determine the new domain of tile at (row, col)
     for (int rowOffset = -1; rowOffset < 2; ++rowOffset) {
         for (int colOffset = -1; colOffset < 2; ++colOffset) {
             if (rowOffset == 0 && colOffset == 0) continue;
@@ -415,8 +412,9 @@ Domain getSingleNumberDomain(int row, int col, int numRow, int numCol, vector<ve
                 --numEmptys;
                 continue;
             }
-            if (!isInGrid(row + rowOffset, col + colOffset)) continue;
-            Tile* currTile = puzzle[row + rowOffset][col + colOffset];
+            // do not count the tile that we need to find out the current domain of
+            if (numRow + rowOffset == row && numCol + colOffset == col) continue;
+            Tile* currTile = puzzle[numRow + rowOffset][numCol + colOffset];
             if (currTile->num != 0 || currTile->assignment == EMPTY) {
                 --numEmptys;
             }
