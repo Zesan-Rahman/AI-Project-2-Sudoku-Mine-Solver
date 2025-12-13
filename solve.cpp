@@ -1,6 +1,7 @@
 #include <fstream>
 #include <iostream>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 using std::cout;
@@ -9,6 +10,7 @@ using std::fstream;
 using std::iostream;
 using std::ofstream;
 using std::string;
+using std::unordered_set;
 using std::vector;
 
 enum Assignment { UNASSIGNED, BOMB, EMPTY };
@@ -73,11 +75,12 @@ Pair getCoordsOfTile(const Tile* tile, vector<vector<Tile*>> puzzle);
 // checks if a numbered tile is consistent with its surrounding tiles
 bool isNumberedTileConsistent(int row, int col, vector<vector<Tile*>>& puzzle);
 
+// Reads the input and creates a 2D vector representing the puzzle
 vector<vector<Tile*>> readPuzzle(const string& filePath);
 
-void writeAnswer(vector<vector<Tile*>>& puzzle);
+void writeAnswer(vector<vector<Tile*>>& puzzle, unordered_set<string>& nodes);
 
-bool backtrackingSearch(vector<vector<Tile*>>& puzzle);
+bool backtrackingSearch(vector<vector<Tile*>>& puzzle, unordered_set<string>& nodes);
 
 bool isInRow(int row, int col, int newRow, int newCol);
 
@@ -106,10 +109,18 @@ Tile* selectUnassignedVariable(vector<vector<Tile*>>& puzzle);
 // sees if there are any unassigned tiles in the puzzle
 bool isPuzzleComplete(vector<vector<Tile*>>& puzzle);
 
+// Copy functions for the puzzle, used in places where we may need to revert changes
 vector<vector<Tile>> makeCopy(vector<vector<Tile*>>& puzzle);
 void copyPuzzle(vector<vector<Tile*>>& puzzle, vector<vector<Tile>>& copy);
 
+// Testing function that prints out the layout of the puzzle
 string puzzleStatus(const vector<vector<Tile*>>& puzzle);
+
+// Generates a unique key for the current puzzle formation
+string makeKey(const vector<vector<Tile*>>& puzzle);
+
+// Gets the goal depth of the puzzle by counting how many 0s
+int getGoalDepth(const vector<vector<Tile*>>& puzzle);
 
 int main(int argc, char* argv[]) {
     if (argc != 2) {
@@ -117,8 +128,9 @@ int main(int argc, char* argv[]) {
         return 1;
     }
     vector<vector<Tile*>> puzzle = readPuzzle(argv[1]);
-    backtrackingSearch(puzzle);
-    writeAnswer(puzzle);
+    unordered_set<string> nodes;
+    backtrackingSearch(puzzle, nodes);
+    writeAnswer(puzzle, nodes);
 }
 
 vector<vector<Tile*>> readPuzzle(const string& filePath) {
@@ -283,10 +295,11 @@ bool isInBox(int row, int col, int newRow, int newCol) {
     return false;
 }
 
-bool backtrackingSearch(vector<vector<Tile*>>& puzzle) {
+bool backtrackingSearch(vector<vector<Tile*>>& puzzle, unordered_set<string>& nodes) {
     // if assignment is complete return true
-    bool isComplete = isPuzzleComplete(puzzle);
-    if (isComplete == true) {
+
+    if (isPuzzleComplete(puzzle)) {
+        // Testing
         string currStatus = puzzleStatus(puzzle);
         const char* currentStatus = currStatus.c_str();
         cout << endl << currStatus << endl;
@@ -305,27 +318,20 @@ bool backtrackingSearch(vector<vector<Tile*>>& puzzle) {
         if (value == 1 && !chosenTile->domain.canBeBomb) continue;
         // Add var = value to assignment
         value ? chosenTile->assignment = BOMB : chosenTile->assignment = EMPTY;
-        string currStatus = puzzleStatus(puzzle);
-        const char* currentStatus = currStatus.c_str();
+        nodes.insert(makeKey(puzzle));
+        // string currStatus = puzzleStatus(puzzle);
+        // const char* currentStatus = currStatus.c_str();
         vector<vector<Tile>> copy = makeCopy(puzzle);
         bool inference = forwardChecking(chosenTileCoords.row, chosenTileCoords.col, puzzle);
         // inference != failure
         if (inference) {
-            bool resultPassed = backtrackingSearch(puzzle);
+            bool resultPassed = backtrackingSearch(puzzle, nodes);
             if (resultPassed) return resultPassed;
             // Remove inferences from csp
             copyPuzzle(puzzle, copy);
         }
         value ? chosenTile->domain.canBeBomb = false : chosenTile->domain.canBeEmpty = false;
     }
-    // loop over puzzle and get best tile to change with mrv + dh
-    // change tile value to empty, then bomb in second loop if empty fails
-    // if is consistent then
-    // run inference on csp and see if any fail
-    // if none fail then recursively backtrack
-    // if that succeeds return true
-    // otherwise reset the tile's value
-    // return false to upward call
     return false;
 }
 
@@ -557,8 +563,10 @@ Pair getCoordsOfTile(const Tile* tile, vector<vector<Tile*>> puzzle) {
     return Pair{0, 0};
 }
 
-void writeAnswer(vector<vector<Tile*>>& puzzle) {
+void writeAnswer(vector<vector<Tile*>>& puzzle, unordered_set<string>& nodes) {
     ofstream outputFile("output.txt");
+    outputFile << getGoalDepth(puzzle) << endl;
+    outputFile << nodes.size() << endl;
     for (size_t row = 0; row < puzzle.size(); ++row) {
         for (size_t col = 0; col < puzzle[row].size(); ++col) {
             outputFile << (puzzle[row][col]->assignment == BOMB) << " ";
@@ -601,4 +609,21 @@ string puzzleStatus(const vector<vector<Tile*>>& puzzle) {
         result += "\n";
     }
     return result;
+}
+
+// I didn't want to use puzzleStatus to make the keys because puzzleStatus is supposed to be a testing only
+// function, so it would look weird.
+string makeKey(const vector<vector<Tile*>>& puzzle) {
+    return puzzleStatus(puzzle);
+}
+
+// Gets the goal depth of the puzzle by counting how many 0s
+int getGoalDepth(const vector<vector<Tile*>>& puzzle) {
+    int res = 0;
+    for (size_t row = 0; row < puzzle.size(); ++row) {
+        for (size_t col = 0; col < puzzle.size(); ++col) {
+            if (puzzle[row][col]->num == 0) res++;
+        }
+    }
+    return res;
 }
