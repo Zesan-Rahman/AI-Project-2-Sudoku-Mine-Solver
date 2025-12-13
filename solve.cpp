@@ -675,9 +675,14 @@ bool forwardCheckBox(int row, int col, vector<vector<Tile*>>& puzzle) {
 }
 
 bool forwardCheckNumberedTile(int row, int col, vector<vector<Tile*>>& puzzle) {
+    // if (row == 0 && col == 7) {
+    //     int x = 3;
+    //     int y = 4;
+    // }
+    // const char* currentStatus = puzzleStatus(puzzle).c_str();
     int numBombs = 0;
     int numEmptys = 0;
-    int maxEmptys = 8;
+    int maxEmptys = 8 - puzzle[row][col]->num;
     for (int rowOffset = -1; rowOffset < 2; ++rowOffset) {
         for (int colOffset = -1; colOffset < 2; ++colOffset) {
             if (rowOffset == 0 && colOffset == 0) continue;
